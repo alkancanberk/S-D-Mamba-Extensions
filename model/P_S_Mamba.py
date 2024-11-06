@@ -1,3 +1,7 @@
+import torch
+import torch.nn as nn
+from layers.Mamba_EncDec import Encoder, EncoderLayer
+from layers.Embed import PatchEmbedding
 from mamba_ssm import Mamba
 
 class FlattenHead(nn.Module):
@@ -22,19 +26,19 @@ class Model(nn.Module):
     def __init__(self, configs, stride=8):
         super(Model, self).__init__()
         # Store configurations for sequence and prediction lengths, and model behavior
-        self.seq_len = configs["seq_len"]           # Input sequence length
-        self.pred_len = configs["pred_len"]          # Output prediction length
-        self.output_attention = configs["output_attention"]  # Whether to output attention weights
-        self.use_norm = configs["use_norm"]          # Whether to normalize the inputs
+        self.seq_len = configs.seq_len           # Input sequence length
+        self.pred_len = configs.pred_len          # Output prediction length
+        self.output_attention = configs.output_attention  # Whether to output attention weights
+        self.use_norm = configs.use_norm          # Whether to normalize the inputs
 
         # Calculate patch number dynamically as in C-Mamba
-        self.patch_len = configs.get("patch_len", 16)  # Set a default patch length if not provided
-        self.stride = configs.get("stride", stride)
+        self.patch_len = getattr(configs, "patch_len", 16)  # Set a default patch length if not provided
+        self.stride = getattr(configs, "stride", stride)
         self.patch_num = int((self.seq_len - self.patch_len) / self.stride + 2)
 
         # Initialize PatchEmbedding using C-Mamba’s implementation
         self.enc_embedding = PatchEmbedding(
-            configs["d_model"], self.patch_len, self.stride, self.stride, configs["dropout"]
+            configs.d_model, self.patch_len, self.stride, self.stride, configs.dropout
         )
 
         # Encoder-only architecture
@@ -43,29 +47,29 @@ class Model(nn.Module):
                 # Create encoder layers, each with two Mamba blocks and feedforward network
                 EncoderLayer(
                     Mamba(
-                        d_model=configs["d_model"],    # Model dimension
-                        d_state=configs["d_state"],    # State dimension in Mamba block
-                        d_conv=2,                      # Convolution layer dimension
-                        expand=1                       # Expansion factor
+                        d_model=configs.d_model,    # Model dimension
+                        d_state=configs.d_state,    # State dimension in Mamba block
+                        d_conv=2,                   # Convolution layer dimension
+                        expand=1                    # Expansion factor
                     ),
                     Mamba(
-                        d_model=configs["d_model"],
-                        d_state=configs["d_state"],
+                        d_model=configs.d_model,
+                        d_state=configs.d_state,
                         d_conv=2,
                         expand=1
                     ),
-                    d_model=configs["d_model"],        # Model dimension
-                    d_ff=configs["d_model"] * 4,       # Feedforward network dimension
-                    dropout=configs["dropout"],        # Dropout rate
-                    activation=configs["activation"]   # Activation function
-                ) for _ in range(configs["e_layers"])  # Repeat for specified number of encoder layers
+                    d_model=configs.d_model,        # Model dimension
+                    d_ff=configs.d_model * 4,       # Feedforward network dimension
+                    dropout=configs.dropout,        # Dropout rate
+                    activation=configs.activation   # Activation function
+                ) for _ in range(configs.e_layers)  # Repeat for specified number of encoder layers
             ],
-            norm_layer=torch.nn.LayerNorm(configs["d_model"])  # Layer normalization for stable training
+            norm_layer=torch.nn.LayerNorm(configs.d_model)  # Layer normalization for stable training
         )
 
         # Prediction Head using a Flattening approach like in C-Mamba
-        self.head_nf = configs["d_model"] * self.patch_num
-        self.head = FlattenHead(configs["enc_in"], self.head_nf, self.pred_len, head_dropout=configs["dropout"])
+        self.head_nf = configs.d_model * self.patch_num
+        self.head = FlattenHead(configs.enc_in, self.head_nf, self.pred_len, head_dropout=configs.dropout)
 
     # Forecasting function to generate predictions
     def forecast(self, x_enc, x_mark_enc, x_dec, x_mark_dec):
@@ -98,10 +102,6 @@ class Model(nn.Module):
         dec_out = self.head(enc_out)  # Shape: [batch_size, num_vars, target_window]
         dec_out = dec_out.permute(0, 2, 1)  # Transpose to [batch_size, target_window, num_vars]
 
-        # Debugging shapes
-       # print("dec_out shape:", dec_out.shape)   # Expected [batch_size, pred_len, num_vars]
-       # print("stdev shape:", stdev.shape)       # Expected [batch_size, 1, num_vars]
-
         # De-normalize if instance normalization was applied
         if self.use_norm:
             # Expand or repeat stdev to match dec_out's shape
@@ -118,5 +118,5 @@ class Model(nn.Module):
     def forward(self, x_enc, x_mark_enc, x_dec, x_mark_dec, mask=None):
         # Generate forecasted predictions
         dec_out = self.forecast(x_enc, x_mark_enc, x_dec, x_mark_dec)
-        # Return last `pred_len` predictions
+        # Return last `pred_len`
         return dec_out[:, -self.pred_len:, :]  # Shape: [Batch, pred_len, Features]
