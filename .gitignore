@@ -1,0 +1,10 @@
+checkpoints/
+data_provider/__pycache__/
+dataset/
+experiments/__pycache__/
+layers/__pycache__/
+model/__pycache__/
+result_long_term_forecast.txt
+results/
+test_results/
+utils/__pycache__/
