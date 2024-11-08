@@ -40,7 +40,9 @@ class Exp_Long_Term_Forecast(Exp_Basic):
 
     def vali(self, vali_data, vali_loader, criterion):
         total_loss = []
-        self.model.eval()
+        # model.eval(): deactivation of dropout, batch normalization adjustment
+        # for testing, validation or inference 
+        self.model.eval() 
         with torch.no_grad():
             for i, (batch_x, batch_y, batch_x_mark, batch_y_mark) in enumerate(vali_loader):
                 batch_x = batch_x.float().to(self.device)
@@ -311,7 +313,7 @@ class Exp_Long_Term_Forecast(Exp_Basic):
 
     def predict(self, setting, load=False):
         pred_data, pred_loader = self._get_data(flag='pred')
-
+        print("Doing prediction with flag='pred'")
         if load:
             path = os.path.join(self.args.checkpoints, setting)
             best_model_path = path + '/' + 'checkpoint.pth'
