@@ -42,7 +42,9 @@ class Exp_Long_Term_Forecast(Exp_Basic):
         total_loss = []
         # model.eval(): deactivation of dropout, batch normalization adjustment
         # for testing, validation or inference 
-        self.model.eval() 
+        self.model.eval()
+
+        # no_grad(): disable gradient calculation -> useful when no backward() (inference)
         with torch.no_grad():
             for i, (batch_x, batch_y, batch_x_mark, batch_y_mark) in enumerate(vali_loader):
                 batch_x = batch_x.float().to(self.device)
@@ -86,16 +88,19 @@ class Exp_Long_Term_Forecast(Exp_Basic):
         return total_loss
 
     def train(self, setting):
+        # string: string identifier that shows the model configs (in run.py)
         train_data, train_loader = self._get_data(flag='train')
         vali_data, vali_loader = self._get_data(flag='val')
         test_data, test_loader = self._get_data(flag='test')
-
+        
+        # creates folder for this unique model in checkpoints folder
         path = os.path.join(self.args.checkpoints, setting)
         if not os.path.exists(path):
             os.makedirs(path)
 
         time_now = time.time()
 
+        # train_steps: number of batches within an epoch
         train_steps = len(train_loader)
         early_stopping = EarlyStopping(patience=self.args.patience, verbose=True)
 
@@ -109,6 +114,7 @@ class Exp_Long_Term_Forecast(Exp_Basic):
             iter_count = 0
             train_loss = []
 
+            # train(): enables train-mode where batch normalization and dropout are allowed
             self.model.train()
             epoch_time = time.time()
             for i, (batch_x, batch_y, batch_x_mark, batch_y_mark) in enumerate(train_loader):
