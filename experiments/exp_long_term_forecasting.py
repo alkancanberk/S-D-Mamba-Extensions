@@ -131,18 +131,22 @@ class Exp_Long_Term_Forecast(Exp_Basic):
                     batch_y_mark = batch_y_mark.float().to(self.device)
 
                 # decoder input
+                # (1) initialize shape with Bx pred_len x D and 
+                # (2) concat with B x label_len x D
                 dec_inp = torch.zeros_like(batch_y[:, -self.args.pred_len:, :]).float()
                 dec_inp = torch.cat([batch_y[:, :self.args.label_len, :], dec_inp], dim=1).float().to(self.device)
 
                 # encoder - decoder
+                # forward pass with criterion
+                # amp: for some values float16 instead of float32, resulting in less precision but faster computation
                 if self.args.use_amp:
                     with torch.cuda.amp.autocast():
-                        if self.args.output_attention:
+                        if self.args.output_attention: # model returns additional information about attention weights, so outputs is selected with [0] to take only the prediction tensor
                             outputs = self.model(batch_x, batch_x_mark, dec_inp, batch_y_mark)[0]
                         else:
                             outputs = self.model(batch_x, batch_x_mark, dec_inp, batch_y_mark)
 
-                        f_dim = -1 if self.args.features == 'MS' else 0
+                        f_dim = -1 if self.args.features == 'MS' else 0 # MS means multivariate to single and else 0 means univariate forecasting
                         # print("outputs before slicing:", outputs)
                         outputs = outputs[:, -self.args.pred_len:, f_dim:]
                         batch_y = batch_y[:, -self.args.pred_len:, f_dim:].to(self.device)
