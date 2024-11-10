@@ -4,6 +4,7 @@ import numpy as np
 import torch
 import matplotlib.pyplot as plt
 import pandas as pd
+import seaborn as sns
 
 plt.switch_backend('agg')
 
@@ -85,6 +86,33 @@ def visual(true, preds=None, name='./pic/test.pdf'):
         plt.plot(preds, label='Prediction', linewidth=2, c='r')
     plt.legend()
     plt.savefig(name, bbox_inches='tight')
+
+def visual_epoch_loss(train_losses=None, vali_losses=None, test_losses=None, save_path=None):
+    plt.figure(figsize=(10, 5))
+    
+    # Plot each loss if provided
+    if train_losses is not None:
+        plt.plot(train_losses, label='Train Loss', color='blue')
+    if vali_losses is not None:
+        plt.plot(vali_losses, label='Validation Loss', color='lightseagreen')
+    
+    plt.xlabel('Epoch')
+    plt.ylabel('Loss')
+    plt.title('Training and Validation Loss over Epochs')
+
+    plt.grid(which='major', linestyle='-', linewidth='0.5', color='gray', alpha=0.5)
+    plt.grid(which='minor', linestyle=':', linewidth='0.5', color='gray', alpha=0.3)
+    plt.legend()
+
+    # Save the plot if save_path is provided
+    if save_path:
+        plt.savefig(save_path)
+        print(f"Loss plot saved to {save_path}")
+    else:
+        plt.show()
+
+    plt.close()  # Close the plot to free up memory
+
 
 
 def adjustment(gt, pred):
