@@ -17,7 +17,8 @@ class EncoderLayer(nn.Module):
         self.norm1 = nn.LayerNorm(d_model)
         self.norm2 = nn.LayerNorm(d_model)
         self.dropout = nn.Dropout(dropout)
-        self.activation = F.relu if activation == "relu" else F.gelu
+        # self.activation = F.relu if activation == "relu" else F.gelu
+        self.activation = F.silu
         self.man = Mamba(
             d_model=11,  # Model dimension d_model
             d_state=16,  # SSM state expansion factor

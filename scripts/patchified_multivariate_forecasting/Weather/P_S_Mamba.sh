@@ -19,10 +19,12 @@ python -u run.py \
   --des 'Exp' \
   --d_model 512\
   --learning_rate 0.00005 \
-  --train_epochs 20\
+  --train_epochs 10\
   --d_state 2 \
-  --d_ff 512\
-  --itr 1
+  --d_ff 512 \
+  --itr 1 \
+
+  
 #     # P-S-Mamba specific settings
 #   --use_norm True\
 #   --patch_len 16\
